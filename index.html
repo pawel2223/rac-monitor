@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="RAC Monitor">
+<meta name="theme-color" content="#0a0e1a">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-152.png">
+<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
+<title>GREE RAC Monitor</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+:root{
+  --bg:#0a0e1a;--bg2:#111827;--bg3:#1a2235;--bg4:#1e293b;
+  --accent:#3b82f6;--accent2:#60a5fa;--accent3:#1d4ed8;
+  --ok:#10b981;--warn:#f59e0b;--err:#ef4444;--cyan:#06b6d4;
+  --txt:#f1f5f9;--txt2:#cbd5e1;--txt3:#64748b;
+  --border:rgba(59,130,246,0.18);--border2:rgba(255,255,255,0.06);
+  --card:linear-gradient(145deg,rgba(17,24,39,0.97),rgba(10,14,26,0.97));
+  --r:14px;--r2:10px;--r3:8px;--sh:0 4px 20px rgba(0,0,0,0.45);
+  --safe-top: env(safe-area-inset-top);
+  --safe-bot: env(safe-area-inset-bottom);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;overflow:hidden;}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-thumb{background:var(--accent);border-radius:10px}
+
+/* ── HEADER ── */
+#hdr{
+  height:calc(56px + var(--safe-top));
+  padding-top:var(--safe-top);
+  background:linear-gradient(135deg,#06080f,#0f172a);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding-left:16px;padding-right:16px;
+  gap:12px;flex-shrink:0;position:sticky;top:0;z-index:100;
+}
+#hdr img{height:26px;}
+#hdr .htitle{font-size:.8rem;color:var(--txt3);margin-left:2px;}
+#hdr .sep{flex:1;}
+#src-ind{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;font-size:.68rem;font-weight:600;}
+.src-ws  {background:rgba(16,185,129,.12);color:var(--ok);border:1px solid rgba(16,185,129,.3);}
+.src-mqtt{background:rgba(59,130,246,.12);color:var(--accent2);border:1px solid rgba(59,130,246,.3);}
+.src-csv {background:rgba(245,158,11,.12);color:var(--warn);border:1px solid rgba(245,158,11,.3);}
+.src-none{background:rgba(100,116,139,.1);color:var(--txt3);border:1px solid var(--border2);}
+
+/* ── BOTTOM NAV ── */
+#nav{
+  height:calc(56px + var(--safe-bot));
+  padding-bottom:var(--safe-bot);
+  background:#06080f;border-top:1px solid var(--border);
+  display:flex;flex-shrink:0;position:sticky;bottom:0;z-index:100;
+}
+.ni{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:3px;border:none;background:transparent;color:var(--txt3);cursor:pointer;
+    font-size:.6rem;transition:.2s;padding:6px 0;}
+.ni i{font-size:1.1rem;}
+.ni.active{color:var(--accent);}
+.ni.active i{text-shadow:0 0 8px rgba(59,130,246,.5);}
+
+/* ── CONTENT ── */
+#app{display:flex;flex-direction:column;height:100vh;}
+.cw{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:14px;}
+.page{display:none;animation:fi .2s ease;}.page.active{display:block;}
+@keyframes fi{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── LOGIN ── */
+#login-screen{position:fixed;inset:0;background:linear-gradient(135deg,#0a0e1a,#111827);
+  display:flex;align-items:center;justify-content:center;padding:24px;z-index:500;
+  padding-top:calc(24px + var(--safe-top));}
+#login-screen::before{content:'';position:absolute;inset:0;
+  background:radial-gradient(circle at 20% 80%,rgba(59,130,246,.15) 0%,transparent 50%),
+             radial-gradient(circle at 80% 20%,rgba(16,185,129,.1) 0%,transparent 50%);pointer-events:none;}
+.lc{width:100%;max-width:400px;position:relative;z-index:1;}
+.lh{text-align:center;margin-bottom:24px;}
+.lh img{height:60px;margin-bottom:12px;}
+.l-sub{color:var(--txt3);font-size:.82rem;}
+.l-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:22px;box-shadow:var(--sh);}
+.l-ch{padding-bottom:14px;margin-bottom:16px;border-bottom:1px solid var(--border);}
+.l-ch h2{display:flex;align-items:center;gap:7px;font-size:.95rem;font-weight:600;}
+.ig{margin-bottom:14px;}
+.ig label{display:block;margin-bottom:4px;color:var(--txt2);font-size:.78rem;font-weight:500;}
+.ig input{width:100%;padding:11px 13px;background:rgba(15,23,42,.8);border:1px solid var(--border);
+          color:var(--txt);border-radius:var(--r3);font-size:1rem;-webkit-appearance:none;}
+.ig input:focus{outline:none;border-color:var(--accent);}
+.pw-wrap{position:relative;}.pw-tog{position:absolute;right:10px;top:50%;transform:translateY(-50%);
+  background:transparent;border:none;color:var(--txt3);cursor:pointer;padding:5px;}
+.btn-login{width:100%;padding:13px;background:linear-gradient(135deg,var(--accent),var(--accent3));
+  color:#fff;border:none;border-radius:var(--r3);font-weight:700;font-size:1rem;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:7px;margin-bottom:12px;}
+.err-msg{color:var(--err);font-size:.8rem;margin-top:7px;text-align:center;display:none;}
+.l-foot{text-align:center;color:var(--txt3);margin-top:16px;font-size:.7rem;}
+
+/* ── CARDS ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+      margin-bottom:12px;box-shadow:var(--sh);}
+.ch{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;}
+.ch h2{font-size:.88rem;font-weight:600;display:flex;align-items:center;gap:7px;}
+.ch h2::before{content:'';display:block;width:3px;height:13px;
+  background:linear-gradient(180deg,var(--accent),var(--accent2));border-radius:2px;}
+.cb{padding:12px 14px;}
+
+/* ── STATUS PILLS ── */
+.conn-pills{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;}
+.cp{display:flex;align-items:center;gap:7px;padding:7px 10px;background:rgba(15,23,42,.6);
+    border-radius:var(--r3);font-size:.75rem;border:1px solid var(--border2);}
+.cp .lbl{color:var(--txt3);min-width:40px;font-weight:600;}
+.cp .dot{width:7px;height:7px;border-radius:50%;background:#374151;flex-shrink:0;transition:.3s;}
+.dot.ok{background:var(--ok);box-shadow:0 0 6px var(--ok);}
+.dot.err{background:var(--err);box-shadow:0 0 6px var(--err);}
+.dot.warn{background:var(--warn);animation:pulse 1.5s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.cp .val{color:var(--txt2);font-size:.7rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+/* ── TILES ── */
+.tgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+@media(min-width:600px){.tgrid{grid-template-columns:repeat(3,1fr);}}
+@media(min-width:900px){.tgrid{grid-template-columns:repeat(4,1fr);}}
+.tile{background:rgba(15,23,42,0.7);border:1px solid var(--border);border-radius:var(--r2);
+      padding:11px;transition:.2s;position:relative;overflow:hidden;cursor:pointer;
+      -webkit-user-select:none;user-select:none;}
+.tile:active{transform:scale(.97);border-color:var(--accent);}
+.tile::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transform:scaleX(0);transition:.3s;}
+.tile.upd::before{transform:scaleX(1);}
+.t-lbl{font-size:.65rem;color:var(--txt3);text-transform:uppercase;letter-spacing:.06em;
+        display:flex;align-items:center;gap:4px;margin-bottom:6px;}
+.t-val{font-size:1.35rem;font-weight:800;color:var(--txt);text-align:center;
+       min-height:36px;display:flex;align-items:center;justify-content:center;}
+.t-unit{font-size:.65rem;color:var(--accent2);text-align:center;margin-top:1px;}
+.t-upd{font-size:.58rem;color:var(--txt3);text-align:right;margin-top:4px;
+        padding-top:4px;border-top:1px solid var(--border2);}
+.eev-track{background:var(--bg3);border-radius:3px;height:4px;overflow:hidden;margin-top:4px;}
+.eev-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--cyan));border-radius:3px;transition:width .5s;}
+.eev-labels{display:flex;justify-content:space-between;font-size:.56rem;color:var(--txt3);margin-top:1px;}
+.mode-badge{display:inline-block;padding:3px 11px;border-radius:20px;font-size:.78rem;font-weight:700;transition:.3s;}
+.mode-OFF    {background:rgba(71,85,105,.2);color:#475569;border:1px solid rgba(71,85,105,.4);}
+.mode-Cooling{background:rgba(41,182,246,.12);color:#29b6f6;border:1px solid rgba(41,182,246,.3);}
+.mode-Heating{background:rgba(255,112,67,.12);color:#ff7043;border:1px solid rgba(255,112,67,.3);}
+.mode-Dry   {background:rgba(206,147,216,.12);color:#ce93d8;border:1px solid rgba(206,147,216,.3);}
+.mode-Fan   {background:rgba(165,214,167,.12);color:#a5d6a7;border:1px solid rgba(165,214,167,.3);}
+
+/* ── CHARTS ── */
+.chart-box{background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+           padding:12px;margin-bottom:10px;box-shadow:var(--sh);}
+.chart-box h3{font-size:.78rem;font-weight:600;color:var(--accent2);margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.chart-wrap{height:180px;position:relative;}
+.range-sel{padding:5px 10px;background:rgba(15,23,42,.7);border:1px solid var(--border);border-radius:var(--r3);color:var(--txt);font-size:.78rem;}
+.legend-box{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;}
+.li{display:flex;align-items:center;gap:4px;font-size:.68rem;color:var(--txt3);
+    padding:2px 7px;background:rgba(59,130,246,.07);border-radius:20px;}
+
+/* ── FORMS ── */
+.form-lbl{display:block;margin:10px 0 3px;font-size:.78rem;color:var(--txt2);}
+.finp{width:100%;padding:10px 12px;background:rgba(15,23,42,.8);border:1px solid var(--border);
+      color:var(--txt);border-radius:var(--r3);font-size:.9rem;-webkit-appearance:none;}
+.finp:focus{outline:none;border-color:var(--accent);}
+.btn-p{padding:10px 16px;background:linear-gradient(135deg,var(--accent),var(--accent3));
+       color:#fff;border:none;border-radius:var(--r3);font-weight:600;cursor:pointer;
+       font-size:.82rem;display:inline-flex;align-items:center;gap:5px;}
+.btn-s{padding:10px 16px;background:rgba(15,23,42,.7);color:var(--txt2);
+       border:1px solid var(--border);border-radius:var(--r3);font-weight:500;cursor:pointer;
+       font-size:.82rem;display:inline-flex;align-items:center;gap:5px;}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
+.conn-status{margin-top:10px;padding:8px 12px;border-radius:var(--r3);font-size:.78rem;display:flex;align-items:center;gap:7px;}
+.conn-status.ok{background:rgba(16,185,129,.1);color:var(--ok);border:1px solid rgba(16,185,129,.3);}
+.conn-status.err{background:rgba(239,68,68,.1);color:var(--err);border:1px solid rgba(239,68,68,.3);}
+.conn-status.warn{background:rgba(245,158,11,.1);color:var(--warn);border:1px solid rgba(245,158,11,.3);}
+.alert-info{padding:8px 11px;border-radius:var(--r3);font-size:.78rem;background:rgba(59,130,246,.1);color:var(--accent2);border:1px solid rgba(59,130,246,.3);margin:6px 0;}
+.alert-warn{background:rgba(245,158,11,.1);color:var(--warn);border:1px solid rgba(245,158,11,.3);}
+
+/* ── MQTT LOG ── */
+.msg-list{height:160px;overflow-y:auto;-webkit-overflow-scrolling:touch;
+          background:rgba(10,14,26,.8);border:1px solid var(--border);
+          border-radius:var(--r3);padding:8px;font-family:monospace;font-size:.7rem;}
+.msg-item{padding:4px 7px;margin-bottom:3px;background:rgba(59,130,246,.05);
+          border-radius:3px;border-left:2px solid var(--accent);}
+.msg-time{color:var(--txt3);margin-right:7px;}.msg-topic{color:var(--accent2);font-weight:600;margin-right:4px;}
+
+/* ── CSV PLAYBACK ── */
+.playback-bar{background:rgba(15,23,42,.7);border:1px solid var(--border);border-radius:var(--r2);padding:12px;margin-bottom:10px;}
+.pb-track{background:var(--bg3);border-radius:3px;height:5px;margin:8px 0;cursor:pointer;}
+.pb-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--cyan));border-radius:3px;transition:width .3s;}
+.pb-labels{display:flex;justify-content:space-between;font-size:.62rem;color:var(--txt3);}
+.pb-btns{display:flex;align-items:center;gap:7px;margin-top:8px;flex-wrap:wrap;}
+.pb-btn{width:34px;height:34px;border-radius:50%;border:1px solid var(--border);
+        background:rgba(15,23,42,.8);color:var(--txt2);cursor:pointer;
+        display:flex;align-items:center;justify-content:center;font-size:.85rem;}
+.pb-btn:active{background:var(--accent);color:#fff;border-color:var(--accent);}
+.pb-btn.pbactive{background:var(--accent);color:#fff;border-color:var(--accent);}
+.speed-sel{padding:5px 9px;background:rgba(15,23,42,.8);border:1px solid var(--border);color:var(--txt);border-radius:var(--r3);font-size:.75rem;}
+
+/* ── HISTORY ── */
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--border);border-radius:var(--r2);max-height:400px;overflow-y:auto;}
+.htbl{width:100%;border-collapse:collapse;font-size:.7rem;}
+.htbl th{padding:7px 9px;text-align:left;color:var(--txt3);font-weight:600;font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);background:rgba(15,23,42,.7);position:sticky;top:0;}
+.htbl td{padding:6px 9px;border-bottom:1px solid rgba(59,130,246,.06);white-space:nowrap;}
+.htbl tr:active td{background:rgba(59,130,246,.05);}
+
+/* ── TILE CHART MODAL ── */
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;
+       justify-content:center;align-items:center;padding:16px;
+       padding-top:calc(16px + var(--safe-top));}
+.modal.show{display:flex;}
+.modal-box{background:linear-gradient(145deg,rgba(17,24,39,.98),rgba(10,14,26,.98));
+           border:1px solid var(--border);border-radius:var(--r);padding:16px;
+           width:100%;max-width:600px;box-shadow:0 8px 40px rgba(0,0,0,.7);}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.modal-close{width:32px;height:32px;border-radius:50%;border:1px solid var(--border);
+             background:rgba(239,68,68,.1);color:var(--err);cursor:pointer;
+             display:flex;align-items:center;justify-content:center;font-size:1rem;}
+.modal-chart-wrap{height:280px;position:relative;}
+
+/* ── SETTINGS ── */
+.set-grp{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:10px;}
+.si{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;}
+.si label{font-size:.85rem;font-weight:500;}
+.ssel{padding:7px 11px;background:rgba(15,23,42,.7);border:1px solid var(--border);border-radius:var(--r3);color:var(--txt);font-size:.82rem;}
+
+/* ── INSTALL BANNER ── */
+#install-banner{display:none;background:linear-gradient(135deg,rgba(59,130,246,.15),rgba(16,185,129,.1));
+  border:1px solid var(--border);border-radius:var(--r2);padding:10px 14px;margin-bottom:12px;
+  display:flex;align-items:center;gap:10px;font-size:.78rem;color:var(--txt2);}
+#install-banner i{color:var(--accent2);font-size:1.2rem;flex-shrink:0;}
+
+.toast{position:fixed;top:calc(70px + var(--safe-top));right:14px;padding:9px 16px;
+       border-radius:var(--r3);z-index:10000;animation:sin .3s ease,sout .3s ease 2.7s;
+       font-weight:500;font-size:.82rem;max-width:280px;}
+.toast.ok{background:var(--ok);color:#fff;}.toast.er{background:var(--err);color:#fff;}.toast.info{background:var(--accent);color:#fff;}
+@keyframes sin{from{transform:translateX(120%);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes sout{from{opacity:1}to{opacity:0}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="lc">
+    <div class="lh">
+      <img src="gree-logo.png" alt="GREE">
+      <p class="l-sub">RAC Monitor • MQTT • WebSocket • CSV</p>
+    </div>
+    <div class="l-card">
+      <div class="l-ch"><h2><i class="fas fa-user-shield"></i> Logowanie</h2></div>
+      <div class="ig"><label>Login</label><input type="text" id="inp-login" placeholder="Login" autocomplete="username" autocorrect="off" autocapitalize="none"></div>
+      <div class="ig"><label>Hasło</label><div class="pw-wrap"><input type="password" id="inp-pass" placeholder="Hasło" autocomplete="current-password"><button class="pw-tog" id="togPw"><i class="fas fa-eye"></i></button></div></div>
+      <button class="btn-login" id="btnLogin"><i class="fas fa-sign-in-alt"></i> Zaloguj się</button>
+      <div class="err-msg" id="err-msg">Nieprawidłowy login lub hasło!</div>
+    </div>
+    <div class="l-foot">ESP32-C3 Super Mini • GREE UART Protocol</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" style="display:none">
+  <div id="hdr">
+    <img src="gree-logo.png" alt="GREE">
+    <span class="htitle">RAC Monitor</span>
+    <div class="sep"></div>
+    <span id="src-ind" class="src-badge src-none">Brak źródła</span>
+  </div>
+
+  <div class="cw" id="main-cw">
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-home">
+      <!-- Pasek CSV gdy załadowany -->
+      <div id="mini-pb-home" style="display:none;margin-bottom:10px">
+        <div class="playback-bar" style="padding:10px 12px">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+            <span style="font-size:.7rem;color:var(--warn);font-weight:600"><i class="fas fa-file-csv"></i> CSV</span>
+            <span style="font-size:.7rem;color:var(--txt2)" id="mini-pb-frame-h">0/0</span>
+            <span style="font-size:.7rem;color:var(--warn);font-family:monospace" id="mini-pb-ts-h">--</span>
+          </div>
+          <div class="pb-track" id="mini-pb-track-h"><div class="pb-fill" id="mini-pb-fill-h" style="width:0%"></div></div>
+          <div class="pb-btns">
+            <button class="pb-btn" id="m-rew-h"><i class="fas fa-step-backward"></i></button>
+            <button class="pb-btn" id="m-play-h"><i class="fas fa-play"></i></button>
+            <button class="pb-btn" id="m-pause-h"><i class="fas fa-pause"></i></button>
+            <button class="pb-btn" id="m-stop-h"><i class="fas fa-stop"></i></button>
+            <select class="speed-sel" id="m-speed-h"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="5">5×</option><option value="10">10×</option></select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Status -->
+      <div class="conn-pills">
+        <div class="cp"><div class="dot" id="d-ws"></div><span class="lbl">WS</span><span class="val" id="t-ws">Rozłączono</span></div>
+        <div class="cp"><div class="dot" id="d-mqtt"></div><span class="lbl">MQTT</span><span class="val" id="t-mqtt">Rozłączono</span></div>
+        <div class="cp"><div class="dot" id="d-uart"></div><span class="lbl">UART</span><span class="val" id="t-uart">Brak</span></div>
+        <div class="cp"><div class="dot" id="d-csv"></div><span class="lbl">CSV</span><span class="val" id="t-csv">Brak pliku</span></div>
+      </div>
+
+      <!-- ODU -->
+      <div class="card">
+        <div class="ch"><h2><i class="fas fa-snowflake" style="color:#29b6f6"></i> ODU — Jednostka zewnętrzna</h2></div>
+        <div class="cb"><div class="tgrid" id="odu-tiles"></div></div>
+      </div>
+
+      <!-- IDU -->
+      <div class="card">
+        <div class="ch"><h2><i class="fas fa-wind" style="color:#a5d6a7"></i> IDU — Jednostka wewnętrzna</h2></div>
+        <div class="cb">
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px;flex-wrap:wrap">
+            <div><div style="font-size:.62rem;color:var(--txt3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Tryb</div><div class="mode-badge mode-OFF" id="modeBadge">OFF</div></div>
+            <div><div style="font-size:.62rem;color:var(--txt3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Wentylator</div><div style="font-size:.95rem;font-weight:700" id="v-fan-idu">--</div></div>
+            <div style="margin-left:auto"><div style="font-size:.62rem;color:var(--txt3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Wilgotność</div><div style="font-size:1.2rem;font-weight:800;color:#60a5fa" id="v-hum">-- <span style="font-size:.65rem">%</span></div></div>
+          </div>
+          <div class="tgrid" id="idu-tiles"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WYKRESY -->
+    <div class="page" id="page-charts">
+      <div id="mini-pb-charts" style="display:none;margin-bottom:10px">
+        <div class="playback-bar" style="padding:10px 12px">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+            <span style="font-size:.7rem;color:var(--warn);font-weight:600"><i class="fas fa-file-csv"></i> CSV</span>
+            <span style="font-size:.7rem;color:var(--txt2)" id="mini-pb-frame-c">0/0</span>
+            <span style="font-size:.7rem;color:var(--warn);font-family:monospace" id="mini-pb-ts-c">--</span>
+          </div>
+          <div class="pb-track" id="mini-pb-track-c"><div class="pb-fill" id="mini-pb-fill-c" style="width:0%"></div></div>
+          <div class="pb-btns">
+            <button class="pb-btn" id="m-rew-c"><i class="fas fa-step-backward"></i></button>
+            <button class="pb-btn" id="m-play-c"><i class="fas fa-play"></i></button>
+            <button class="pb-btn" id="m-pause-c"><i class="fas fa-pause"></i></button>
+            <button class="pb-btn" id="m-stop-c"><i class="fas fa-stop"></i></button>
+            <select class="speed-sel" id="m-speed-c"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="5">5×</option><option value="10">10×</option></select>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;flex-wrap:wrap">
+        <h2 style="font-size:.95rem;font-weight:700;display:flex;align-items:center;gap:7px"><i class="fas fa-chart-line"></i> Wykresy</h2>
+        <div style="display:flex;gap:7px;align-items:center">
+          <select id="rangeSelect" class="range-sel"><option value="30">30s</option><option value="60" selected>1min</option><option value="300">5min</option></select>
+          <button class="btn-p" id="btnApplyRange" style="padding:6px 12px">OK</button>
+          <button class="btn-s" id="btnClearCharts" style="padding:6px 12px"><i class="fas fa-trash"></i></button>
+        </div>
+      </div>
+      <div class="legend-box">
+        <span class="li"><i class="fas fa-circle" style="color:#3b82f6"></i>T.pokojowa</span>
+        <span class="li"><i class="fas fa-circle" style="color:#10b981"></i>T.rury</span>
+        <span class="li"><i class="fas fa-circle" style="color:#f59e0b"></i>T.zadana</span>
+        <span class="li"><i class="fas fa-circle" style="color:#8b5cf6"></i>T.modułu</span>
+        <span class="li"><i class="fas fa-circle" style="color:#f97316"></i>T.zewnętrzna</span>
+        <span class="li"><i class="fas fa-circle" style="color:#a855f7"></i>T.wymiennika</span>
+        <span class="li"><i class="fas fa-circle" style="color:#ef4444"></i>T.tłoczenia</span>
+        <span class="li"><i class="fas fa-circle" style="color:#f59e0b"></i>Prąd[A]</span>
+        <span class="li"><i class="fas fa-circle" style="color:#8b5cf6"></i>Kompr.[Hz]</span>
+        <span class="li"><i class="fas fa-circle" style="color:#06b6d4"></i>Fan[rpm]</span>
+        <span class="li"><i class="fas fa-circle" style="color:#06b6d4"></i>EEV</span>
+        <span class="li"><i class="fas fa-circle" style="color:#60a5fa"></i>Wilgotność</span>
+      </div>
+      <div class="chart-box"><h3><i class="fas fa-temperature-low" style="color:#3b82f6"></i> Temperatury IDU</h3><div class="chart-wrap"><canvas id="cIndoor"></canvas></div></div>
+      <div class="chart-box"><h3><i class="fas fa-temperature-high" style="color:#f97316"></i> Temperatury ODU</h3><div class="chart-wrap"><canvas id="cOutdoor"></canvas></div></div>
+      <div class="chart-box"><h3><i class="fas fa-bolt" style="color:#f59e0b"></i> Prąd [A]</h3><div class="chart-wrap"><canvas id="cCurrent"></canvas></div></div>
+      <div class="chart-box"><h3><i class="fas fa-tachometer-alt" style="color:#8b5cf6"></i> Kompresor [Hz]</h3><div class="chart-wrap"><canvas id="cComp"></canvas></div></div>
+      <div class="chart-box"><h3><i class="fas fa-fan" style="color:#06b6d4"></i> Wentylator ODU [rpm]</h3><div class="chart-wrap"><canvas id="cFan"></canvas></div></div>
+      <div class="chart-box"><h3><i class="fas fa-expand-arrows-alt" style="color:#06b6d4"></i> Zawór EEV</h3><div class="chart-wrap"><canvas id="cEev"></canvas></div></div>
+      <div class="chart-box"><h3><i class="fas fa-tint" style="color:#60a5fa"></i> Wilgotność [%]</h3><div class="chart-wrap"><canvas id="cHum"></canvas></div></div>
+    </div>
+
+    <!-- POŁĄCZENIA -->
+    <div class="page" id="page-connections">
+      <div class="card">
+        <div class="ch"><h2><i class="fas fa-wifi" style="color:var(--ok)"></i> WebSocket — lokalne (ESP32)</h2></div>
+        <div class="cb">
+          <div class="alert-info">Połączenie z ESP32 w sieci lokalnej WiFi. Port 81.</div>
+          <label class="form-lbl">Adres WebSocket</label>
+          <input class="finp" id="ws-url" type="url" value="ws://192.168.4.1:81/" placeholder="ws://IP_ESP32:81/" autocorrect="off">
+          <div class="btn-row"><button class="btn-p" id="btnWsConn"><i class="fas fa-plug"></i> Połącz</button><button class="btn-s" id="btnWsDisc"><i class="fas fa-times"></i> Rozłącz</button></div>
+          <div class="conn-status warn" id="ws-status"><i class="fas fa-circle"></i> Rozłączono</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ch"><h2><i class="fas fa-cloud" style="color:var(--accent2)"></i> MQTT — HiveMQ Cloud</h2></div>
+        <div class="cb">
+          <div class="alert-info">Połączenie przez Internet (wss://). Działa z każdej sieci.</div>
+          <label class="form-lbl">Adres brokera</label>
+          <input class="finp" id="mqtt-url" type="url" placeholder="wss://xxxx.s1.eu.hivemq.cloud:8884/mqtt" autocorrect="off" autocapitalize="none">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
+            <div><label class="form-lbl">Login</label><input class="finp" id="mqtt-user" type="text" autocorrect="off" autocapitalize="none"></div>
+            <div><label class="form-lbl">Hasło</label><input class="finp" id="mqtt-pass" type="password"></div>
+          </div>
+          <div class="btn-row"><button class="btn-p" id="btnMqttConn"><i class="fas fa-plug"></i> Połącz</button><button class="btn-s" id="btnMqttDisc"><i class="fas fa-times"></i> Rozłącz</button></div>
+          <div class="conn-status warn" id="mqtt-status"><i class="fas fa-circle"></i> Rozłączono</div>
+          <div style="margin-top:10px"><div style="font-size:.72rem;color:var(--txt3);margin-bottom:5px">Monitor wiadomości</div>
+          <div class="msg-list" id="mqtt-log"><span style="color:var(--txt3)">Brak wiadomości...</span></div>
+          <button class="btn-s" style="margin-top:7px;font-size:.72rem" id="btnClrLog"><i class="fas fa-trash"></i> Wyczyść</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ch"><h2><i class="fas fa-file-csv" style="color:var(--warn)"></i> Odtwarzanie CSV</h2></div>
+        <div class="cb">
+          <div class="alert-warn" style="margin-bottom:10px">Wczytaj plik CSV z historii RAC i odtwórz jako nagranie.</div>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+            <button class="btn-p" id="btnLoadCsv"><i class="fas fa-folder-open"></i> Wczytaj CSV</button>
+            <span style="font-size:.75rem;color:var(--txt2);flex:1" id="csv-info">Brak pliku</span>
+          </div>
+          <div id="pb-bar" style="display:none">
+            <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+              <span style="font-size:.72rem;color:var(--txt2)" id="pb-frame">0/0</span>
+              <span style="font-size:.72rem;color:var(--warn);font-family:monospace" id="pb-ts">--</span>
+            </div>
+            <div class="pb-track" id="pb-track"><div class="pb-fill" id="pb-fill" style="width:0%"></div></div>
+            <div class="pb-labels"><span id="pb-t0">--</span><span id="pb-t1">--</span></div>
+            <div class="pb-btns">
+              <button class="pb-btn" id="btnPbRew"><i class="fas fa-step-backward"></i></button>
+              <button class="pb-btn" id="btnPbPlay"><i class="fas fa-play"></i></button>
+              <button class="pb-btn" id="btnPbPause"><i class="fas fa-pause"></i></button>
+              <button class="pb-btn" id="btnPbStop"><i class="fas fa-stop"></i></button>
+              <select class="speed-sel" id="pb-speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="5">5×</option><option value="10">10×</option><option value="60">60×</option></select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTORIA -->
+    <div class="page" id="page-history">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;flex-wrap:wrap">
+        <h2 style="font-size:.95rem;font-weight:700;display:flex;align-items:center;gap:7px"><i class="fas fa-history"></i> Historia</h2>
+        <div style="display:flex;gap:7px;flex-wrap:wrap">
+          <select class="range-sel" id="hLimit"><option value="50">50</option><option value="100" selected>100</option><option value="200">200</option></select>
+          <button class="btn-p" id="btnExport" style="padding:6px 12px"><i class="fas fa-download"></i> CSV</button>
+          <button class="btn-s" id="btnClrHist" style="padding:6px 12px"><i class="fas fa-trash"></i></button>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <table class="htbl">
+          <thead><tr><th>Czas</th><th>Tryb</th><th>T.zadana</th><th>T.pokój</th><th>T.rury</th><th>Wilg.%</th><th>Kompr.</th><th>Fan</th><th>Prąd</th><th>EEV</th><th>T.zewn.</th><th>Źródło</th></tr></thead>
+          <tbody id="hist-body"><tr><td colspan="12" style="text-align:center;padding:24px;color:var(--txt3)">Brak danych</td></tr></tbody>
+        </table>
+      </div>
+      <div style="font-size:.7rem;color:var(--txt3);margin-top:6px" id="hist-count">0 rekordów</div>
+    </div>
+
+    <!-- USTAWIENIA -->
+    <div class="page" id="page-settings">
+      <div class="set-grp">
+        <div style="text-align:center;padding:16px 0 20px">
+          <img src="gree-logo.png" alt="GREE" style="height:44px;margin-bottom:12px">
+          <h3 style="margin-bottom:6px">GREE RAC Monitor</h3>
+          <p style="color:var(--txt3);font-size:.8rem;line-height:1.8">PWA v2.0 • ESP32-C3 Super Mini</p>
+          <p style="margin-top:10px;font-size:.85rem;color:var(--txt2)"><i class="fas fa-user" style="color:var(--accent);margin-right:5px"></i>Autor: <strong>Paweł Kot</strong></p>
+        </div>
+        <hr style="border:none;border-top:1px solid var(--border);margin:4px 0 16px">
+        <div class="si"><label>Maks. rekordów</label><select class="ssel" id="maxHist"><option value="500">500</option><option value="1000" selected>1000</option></select></div>
+        <div class="si"><label>Topik reset ESP32</label><input class="finp" id="mqtt-reset-topic" value="rac/command/reset" type="text" style="max-width:200px;font-size:.8rem"></div>
+      </div>
+      <div class="set-grp">
+        <p style="font-size:.78rem;color:var(--txt3);line-height:1.8">
+          <strong style="color:var(--txt2)">Instalacja na iPadzie:</strong><br>
+          1. Otwórz tę stronę w Safari<br>
+          2. Dotknij ikony Udostępnij <i class="fas fa-share-from-square"></i><br>
+          3. Wybierz <strong>"Dodaj do ekranu głównego"</strong><br>
+          4. Aplikacja działa jak natywna, bez paska Safari
+        </p>
+      </div>
+    </div>
+
+  </div><!-- /cw -->
+
+  <!-- BOTTOM NAV -->
+  <div id="nav">
+    <button class="ni active" onclick="showTab('home')"><i class="fas fa-home"></i><span>Dashboard</span></button>
+    <button class="ni" onclick="showTab('charts')"><i class="fas fa-chart-line"></i><span>Wykresy</span></button>
+    <button class="ni" onclick="showTab('connections')"><i class="fas fa-plug"></i><span>Połączenia</span></button>
+    <button class="ni" onclick="showTab('history')"><i class="fas fa-history"></i><span>Historia</span></button>
+    <button class="ni" onclick="showTab('settings')"><i class="fas fa-cog"></i><span>Ustawienia</span></button>
+  </div>
+</div>
+
+<!-- TILE CHART MODAL -->
+<div class="modal" id="tile-chart-modal">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <div>
+        <div style="font-size:.65rem;color:var(--txt3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:3px">Wykres</div>
+        <div style="display:flex;align-items:baseline;gap:8px">
+          <span style="font-size:1rem;font-weight:700" id="tile-chart-title">—</span>
+          <span style="font-size:1.6rem;font-weight:800;font-family:monospace" id="tile-chart-current">--</span>
+          <span style="font-size:.8rem;color:var(--accent2)" id="tile-chart-unit"></span>
+        </div>
+      </div>
+      <button class="modal-close" id="tile-chart-close">✕</button>
+    </div>
+    <div class="modal-chart-wrap"><canvas id="tile-chart-canvas"></canvas></div>
+    <div style="font-size:.65rem;color:var(--txt3);text-align:center;margin-top:8px">Dotknij poza oknem aby zamknąć</div>
+  </div>
+</div>
+
+<input type="file" id="csv-file-input" accept=".csv" style="display:none">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script src="https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
