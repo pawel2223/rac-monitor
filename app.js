@@ -457,6 +457,19 @@ function playCsvRow(row){
   pushCharts(d);
 }
 
+// ── RESET ESP32 ───────────────────────────────────────────────
+function resetEsp32(){
+  const topic = document.getElementById('mqtt-reset-topic')?.value || 'rac/command/reset';
+  if(mqttClient && mqttClient.connected){
+    mqttClient.publish(topic, 'reset');
+    toast('Wysłano komendę reset przez MQTT!');
+  } else if(ws && ws.readyState===1){
+    toast('Reset działa tylko przez MQTT. Połącz się z brokerem.','info');
+  } else {
+    toast('Brak połączenia! Najpierw połącz się z MQTT.','er');
+  }
+}
+
 // ── SOURCE ────────────────────────────────────────────────────
 function setSource(src){
   dataSource=src;
@@ -517,6 +530,19 @@ function initEventListeners(){
   document.getElementById('btnExport')?.addEventListener('click',exportCSV);
   document.getElementById('btnClrHist')?.addEventListener('click',()=>{if(!confirm('Wyczyścić historię?'))return;histData=[];renderHist();toast('Historia wyczyszczona!');});
   document.getElementById('hLimit')?.addEventListener('change',renderHist);
+  document.getElementById('btnReset')?.addEventListener('click',()=>{
+    document.getElementById('resetModal').classList.add('show');
+  });
+  document.getElementById('cancelReset')?.addEventListener('click',()=>{
+    document.getElementById('resetModal').classList.remove('show');
+  });
+  document.getElementById('confirmReset')?.addEventListener('click',()=>{
+    document.getElementById('resetModal').classList.remove('show');
+    resetEsp32();
+  });
+  document.getElementById('resetModal')?.addEventListener('click',e=>{
+    if(e.target===document.getElementById('resetModal')) document.getElementById('resetModal').classList.remove('show');
+  });
   document.getElementById('tile-chart-close')?.addEventListener('click',closeTileChart);
   document.getElementById('tile-chart-modal')?.addEventListener('click',e=>{if(e.target===document.getElementById('tile-chart-modal'))closeTileChart();});
 }
