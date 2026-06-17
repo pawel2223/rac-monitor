@@ -37,7 +37,7 @@ const IDU_TILES = [
 ];
 
 // ── Stan ──────────────────────────────────────────────────────
-let ws=null, mqttClient=null;
+let mqttClient=null;
 let lastVals={}, histData=[], maxHist=1000;
 let charts={}, maxPts=60;
 let dataSource='none';
@@ -75,7 +75,7 @@ function doLogin(){
   }
 }
 function doLogout(){
-  wsDisc(); mqttDisc(); pbStop();
+  mqttDisc(); pbStop();
   document.getElementById('app').style.display='none';
   document.getElementById('login-screen').style.display='flex';
 }
@@ -246,20 +246,6 @@ function pushCharts(d){
   push(charts.hum,    d.idu.hum);
 }
 
-// ── DATA HANDLER ──────────────────────────────────────────────
-function handleWsData(d){
-  setSource('ws');
-  dot('d-uart',d.uart===1?'ok':d.uart===2?'err':'warn');
-  txt('t-uart',['Brak','Aktywne','Timeout'][d.uart]||'?');
-  setTile('compressor',String(d.odu.comp)); setTile('fan_rpm',String(d.odu.fan));
-  setTile('current',d.odu.cur); setTile('eev',String(d.odu.eev));
-  setTile('temp_module',String(d.odu.t_mod)); setTile('temp_outside',String(d.odu.t_out));
-  setTile('temp_exchanger',String(d.odu.t_exch)); setTile('temp_discharge',String(d.odu.t_disc));
-  setTile('temp_set',String(d.idu.t_set)); setTile('temp_room',String(d.idu.t_room)); setTile('temp_pipe',String(d.idu.t_pipe));
-  setModeBadge(d.idu.mode); txt('v-fan-idu',d.idu.fan);
-  const hv=document.getElementById('v-hum'); if(hv)hv.innerHTML=d.idu.hum+' <span style="font-size:.65rem">%</span>';
-  pushCharts(d); saveHist(d,'WS');
-}
 function handleMqttMsg(topic,val){
   setSource('mqtt');
   const m={
@@ -315,22 +301,6 @@ function exportCSV(){
   a.download=`rac_${new Date().toISOString().slice(0,10)}.csv`; a.click();
   toast('Wyeksportowano CSV!');
 }
-
-// ── WEBSOCKET ─────────────────────────────────────────────────
-function wsConn(){
-  const url=document.getElementById('ws-url').value.trim(); if(!url) return;
-  wsDisc(); setWsSt('warn','Łączenie...');
-  try{
-    ws=new WebSocket(url);
-    ws.onopen=()=>{setWsSt('ok','Połączono');dot('d-ws','ok');txt('t-ws',url.replace('ws://','').split(':')[0]);};
-    ws.onclose=()=>{setWsSt('err','Rozłączono');dot('d-ws','err');txt('t-ws','Rozłączono');ws=null;if(dataSource==='ws')setSource('none');};
-    ws.onerror=()=>setWsSt('err','Błąd');
-    ws.onmessage=e=>{try{handleWsData(JSON.parse(e.data));}catch(ex){}};
-  }catch(e){setWsSt('err','Błędny adres');}
-  saveSettings();
-}
-function wsDisc(){if(ws){ws.close();ws=null;}setWsSt('warn','Rozłączono');dot('d-ws','');txt('t-ws','Rozłączono');}
-function setWsSt(cls,msg){const el=document.getElementById('ws-status');if(el){el.className='conn-status '+cls;el.innerHTML=`<i class="fas fa-circle"></i> ${msg}`;}}
 
 // ── MQTT ──────────────────────────────────────────────────────
 function mqttConn(){
@@ -463,8 +433,6 @@ function resetEsp32(){
   if(mqttClient && mqttClient.connected){
     mqttClient.publish(topic, 'reset');
     toast('Wysłano komendę reset przez MQTT!');
-  } else if(ws && ws.readyState===1){
-    toast('Reset działa tylko przez MQTT. Połącz się z brokerem.','info');
   } else {
     toast('Brak połączenia! Najpierw połącz się z MQTT.','er');
   }
@@ -474,7 +442,7 @@ function resetEsp32(){
 function setSource(src){
   dataSource=src;
   const el=document.getElementById('src-ind'); if(!el) return;
-  const c={ws:{cls:'src-ws',txt:'🟢 WebSocket'},mqtt:{cls:'src-mqtt',txt:'🔵 MQTT'},csv:{cls:'src-csv',txt:'🟡 CSV'},none:{cls:'src-none',txt:'Brak źródła'}}[src]||{cls:'src-none',txt:'Brak źródła'};
+  const c={mqtt:{cls:'src-mqtt',txt:'🔵 MQTT'},csv:{cls:'src-csv',txt:'🟡 CSV'},none:{cls:'src-none',txt:'Brak źródła'}}[src]||{cls:'src-none',txt:'Brak źródła'};
   el.className='src-badge '+c.cls; el.textContent=c.txt;
 }
 
@@ -486,21 +454,23 @@ function toast(msg,type='ok'){
   d.textContent=msg;document.body.appendChild(d);setTimeout(()=>d.remove(),3100);
 }
 function saveSettings(){
-  localStorage.setItem('racConn',JSON.stringify({wsUrl:document.getElementById('ws-url')?.value||'',mqttUrl:document.getElementById('mqtt-url')?.value||'',mqttUser:document.getElementById('mqtt-user')?.value||''}));
+  localStorage.setItem('racConn',JSON.stringify({
+    mqttUrl:document.getElementById('mqtt-url')?.value||'',
+    mqttUser:document.getElementById('mqtt-user')?.value||''
+  }));
 }
 function loadSavedSettings(){
-  try{const s=JSON.parse(localStorage.getItem('racConn'));if(!s)return;
-    if(s.wsUrl&&document.getElementById('ws-url'))document.getElementById('ws-url').value=s.wsUrl;
-    if(s.mqttUrl&&document.getElementById('mqtt-url'))document.getElementById('mqtt-url').value=s.mqttUrl;
+  try{
+    const s=JSON.parse(localStorage.getItem('racConn'));
+    if(!s) return;
+    if(s.mqttUrl&&document.getElementById('mqtt-url'))  document.getElementById('mqtt-url').value=s.mqttUrl;
     if(s.mqttUser&&document.getElementById('mqtt-user'))document.getElementById('mqtt-user').value=s.mqttUser;
   }catch(e){}
 }
 
 // ── EVENT LISTENERS ───────────────────────────────────────────
 function initEventListeners(){
-  document.getElementById('btnWsConn')?.addEventListener('click',wsConn);
-  document.getElementById('btnWsDisc')?.addEventListener('click',wsDisc);
-  document.getElementById('btnMqttConn')?.addEventListener('click',mqttConn);
+      document.getElementById('btnMqttConn')?.addEventListener('click',mqttConn);
   document.getElementById('btnMqttDisc')?.addEventListener('click',mqttDisc);
   document.getElementById('btnClrLog')?.addEventListener('click',()=>{const l=document.getElementById('mqtt-log');if(l)l.innerHTML='<span style="color:var(--txt3)">Brak wiadomości...</span>';});
   document.getElementById('btnLoadCsv')?.addEventListener('click',loadCsv);

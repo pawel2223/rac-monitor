@@ -263,7 +263,7 @@ body{
   <div class="lc">
     <div class="lh">
       <img src="gree-logo.png" alt="GREE">
-      <p class="l-sub">RAC Monitor • MQTT • WebSocket • CSV</p>
+      <p class="l-sub">RAC Monitor • MQTT • CSV Playback</p>
     </div>
     <div class="l-card">
       <div class="l-ch"><h2><i class="fas fa-user-shield"></i> Logowanie</h2></div>
@@ -311,7 +311,6 @@ body{
 
       <!-- Status -->
       <div class="conn-pills">
-        <div class="cp"><div class="dot" id="d-ws"></div><span class="lbl">WS</span><span class="val" id="t-ws">Rozłączono</span></div>
         <div class="cp"><div class="dot" id="d-mqtt"></div><span class="lbl">MQTT</span><span class="val" id="t-mqtt">Rozłączono</span></div>
         <div class="cp"><div class="dot" id="d-uart"></div><span class="lbl">UART</span><span class="val" id="t-uart">Brak</span></div>
         <div class="cp"><div class="dot" id="d-csv"></div><span class="lbl">CSV</span><span class="val" id="t-csv">Brak pliku</span></div>
@@ -389,18 +388,7 @@ body{
 
     <!-- POŁĄCZENIA -->
     <div class="page" id="page-connections">
-      <div class="card">
-        <div class="ch"><h2><i class="fas fa-wifi" style="color:var(--ok)"></i> WebSocket — lokalne (ESP32)</h2></div>
-        <div class="cb">
-          <div class="alert-info">Połączenie z ESP32 w sieci lokalnej WiFi. Port 81.</div>
-          <label class="form-lbl">Adres WebSocket</label>
-          <input class="finp" id="ws-url" type="url" value="ws://192.168.4.1:81/" placeholder="ws://IP_ESP32:81/" autocorrect="off">
-          <div class="btn-row"><button class="btn-p" id="btnWsConn"><i class="fas fa-plug"></i> Połącz</button><button class="btn-s" id="btnWsDisc"><i class="fas fa-times"></i> Rozłącz</button></div>
-          <div class="conn-status warn" id="ws-status"><i class="fas fa-circle"></i> Rozłączono</div>
-        </div>
-      </div>
-      <div class="card">
-        <div class="ch"><h2><i class="fas fa-cloud" style="color:var(--accent2)"></i> MQTT — HiveMQ Cloud</h2></div>
+      <div class="card"><div class="ch"><h2><i class="fas fa-cloud" style="color:var(--accent2)"></i> MQTT — HiveMQ Cloud</h2></div>
         <div class="cb">
           <div class="alert-info">Połączenie przez Internet (wss://). Działa z każdej sieci.</div>
           <label class="form-lbl">Adres brokera</label>
